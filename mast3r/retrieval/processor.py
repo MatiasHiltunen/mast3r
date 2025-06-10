@@ -14,8 +14,15 @@ from mast3r.retrieval.model import RetrievalModel, extract_local_features
 
 try:
     import faiss
-    faiss.StandardGpuResources()  # when loading the checkpoint, it will try to instanciate FaissGpuL2Index
-except AttributeError as e:
+    # Only try to use GPU resources if CUDA is available
+    if torch.cuda.is_available():
+        faiss.StandardGpuResources()  # when loading the checkpoint, it will try to instanciate FaissGpuL2Index
+except (AttributeError, RuntimeError) as e:
+    # Fallback to CPU version
+    pass
+
+# Always import asmk for CPU fallback
+try:
     import asmk.index
 
     class FaissCpuL2Index(asmk.index.FaissL2Index):
@@ -28,8 +35,15 @@ except AttributeError as e:
             return faiss.IndexFlatL2(dim)
 
     asmk.index.FaissGpuL2Index = FaissCpuL2Index
+except ImportError:
+    pass
 
-from asmk import asmk_method  # noqa
+try:
+    from asmk import asmk_method  # noqa
+    HAS_ASMK = True
+except ImportError:
+    HAS_ASMK = False
+    asmk_method = None
 
 
 def get_args_parser():
@@ -64,6 +78,9 @@ def get_impaths_from_imdir_or_imlistfile(input_imdir_or_imlistfile):
 
 class Retriever(object):
     def __init__(self, modelname, backbone=None, device='cuda'):
+        if not HAS_ASMK:
+            raise ImportError("ASMK is not installed. Please install it following the instructions in README_MACOS.md")
+        
         # load the model
         assert os.path.isfile(modelname), modelname
         print(f'Loading retrieval model from {modelname}')

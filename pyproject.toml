@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mast3r"
+version = "0.1.0"
+description = "Grounding Image Matching in 3D with MASt3R"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    # Core dependencies
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "torchaudio>=2.0.0",
+    "scikit-learn",
+    "roma",
+    "gradio",
+    "matplotlib",
+    "tqdm",
+    "opencv-python",
+    "scipy",
+    "einops",
+    "trimesh",
+    "tensorboard",
+    "pyglet<2",
+    "huggingface-hub[torch]>=0.22",
+    "cython",
+    # Optional dependencies for full functionality
+    "pillow-heif",  # add heif/heic image support
+    "pyrender",  # for rendering depths in scannetpp
+    "kapture",  # for visloc data loading
+    "kapture-localization",
+    "numpy-quaternion",
+    "pycolmap",  # for pnp
+    "poselib",  # for pnp
+    # For retrieval functionality
+    "faiss-cpu",  # CPU-only version for macOS compatibility
+]
+
+[tool.uv]
+# Use uv to manage dependencies
+managed = true
+# Specify Python version for macOS compatibility
+python-preference = "managed"
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+# macOS CPU-only PyTorch packages
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+torchaudio = { index = "pytorch-cpu" }
+# We'll need to install ASMK from git since it's not on PyPI
+asmk = { git = "https://github.com/jenicek/asmk.git" }
+
+[tool.hatch.build.targets.wheel]
+packages = ["mast3r", "dust3r"] 

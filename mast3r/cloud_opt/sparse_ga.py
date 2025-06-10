@@ -601,7 +601,8 @@ def forward_mast3r(pairs, model, cache_path, desc_conf='desc_conf',
         res_paths[img1['instance'], img2['instance']] = (path1, path2), path_corres
 
     del model
-    torch.cuda.empty_cache()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     return res_paths, cache_path
 
@@ -617,7 +618,7 @@ def symmetric_inference(model, img1, img2, device):
 
     def decoder(feat1, feat2, pos1, pos2, shape1, shape2):
         dec1, dec2 = model._decoder(feat1, pos1, feat2, pos2)
-        with torch.cuda.amp.autocast(enabled=False):
+        with torch.amp.autocast('cuda', enabled=False):
             res1 = model._downstream_head(1, [tok.float() for tok in dec1], shape1)
             res2 = model._downstream_head(2, [tok.float() for tok in dec2], shape2)
         return res1, res2

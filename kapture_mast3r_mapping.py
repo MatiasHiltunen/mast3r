@@ -9,6 +9,7 @@ import pycolmap
 import os
 import os.path as path
 import argparse
+import torch
 
 from mast3r.model import AsymmetricMASt3R
 from mast3r.colmap.mapping import (kapture_import_image_folder_or_list, run_mast3r_matching, pycolmap_run_triangulator,
@@ -45,7 +46,14 @@ def get_argparser():
     parser_matching = parser.add_mutually_exclusive_group()
     parser_matching.add_argument('--dense_matching', action='store_true', default=False)
     parser_matching.add_argument('--pixel_tol', default=0, type=int)
-    parser.add_argument('--device', default='cuda')
+    # Auto-detect best device: cuda > mps > cpu
+    if torch.cuda.is_available():
+        default_device = 'cuda'
+    elif torch.backends.mps.is_available():
+        default_device = 'mps'
+    else:
+        default_device = 'cpu'
+    parser.add_argument('--device', default=default_device)
 
     parser.add_argument('--conf_thr', default=1.001, type=float)
     parser.add_argument('--skip_geometric_verification', action='store_true', default=False)

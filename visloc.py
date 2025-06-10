@@ -51,7 +51,14 @@ def get_args_parser():
     parser.add_argument("--c2f_crop_with_homography", action='store_true', default=False,
                         help="when using coarse to fine, crop with homographies to keep cx, cy centered")
 
-    parser.add_argument("--device", type=str, default='cuda', help="pytorch device")
+    # Auto-detect best device: cuda > mps > cpu
+    if torch.cuda.is_available():
+        default_device = 'cuda'
+    elif torch.backends.mps.is_available():
+        default_device = 'mps'
+    else:
+        default_device = 'cpu'
+    parser.add_argument("--device", type=str, default=default_device, help="pytorch device")
     parser.add_argument("--pnp_mode", type=str, default="cv2", choices=['cv2', 'poselib', 'pycolmap'],
                         help="pnp lib to use")
     parser_reproj = parser.add_mutually_exclusive_group()

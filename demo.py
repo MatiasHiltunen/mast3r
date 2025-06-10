@@ -21,7 +21,9 @@ from dust3r.demo import set_print_with_timestamp
 import matplotlib.pyplot as pl
 pl.ion()
 
-torch.backends.cuda.matmul.allow_tf32 = True  # for gpu >= Ampere and pytorch >= 1.12
+# Only set CUDA settings if CUDA is available
+if torch.cuda.is_available():
+    torch.backends.cuda.matmul.allow_tf32 = True  # for gpu >= Ampere and pytorch >= 1.12
 
 if __name__ == '__main__':
     parser = get_args_parser()

@@ -31,7 +31,14 @@ def get_argparser():
                                 choices=["MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric"])
     parser.add_argument('--retrieval_model', default=None, type=str, help="retrieval_model to be loaded")
 
-    parser.add_argument("--device", type=str, default='cuda', help="pytorch device")
+    # Auto-detect best device: cuda > mps > cpu
+    if torch.cuda.is_available():
+        default_device = 'cuda'
+    elif torch.backends.mps.is_available():
+        default_device = 'mps'
+    else:
+        default_device = 'cpu'
+    parser.add_argument("--device", type=str, default=default_device, help="pytorch device")
 
     return parser
 
@@ -68,7 +75,8 @@ def main(dir, scene_graph, output, backbone=None, retrieval_model=None):
 
         # Cleanup
         del retriever
-        torch.cuda.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     pairs = make_pairs(imgs, scene_graph, prefilter=None, symmetrize=True, sim_mat=sim_matrix)
     pairs = [(p1, p2, 1.0) for p1, p2 in pairs]

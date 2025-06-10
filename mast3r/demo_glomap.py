@@ -112,7 +112,8 @@ def get_reconstructed_scene(glomap_bin, outdir, gradio_delete_cache, model, retr
 
         # Cleanup
         del retriever
-        torch.cuda.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     pairs = make_pairs(imgs, scene_graph=scene_graph, prefilter=None, symmetrize=True, sim_mat=sim_matrix)
 

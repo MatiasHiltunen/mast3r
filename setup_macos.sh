@@ -15,13 +15,13 @@ uv pip install -e .
 
 # Install ASMK separately (may need special handling)
 echo "Installing ASMK..."
-git clone https://github.com/jenicek/asmk.git temp_asmk || true
-cd temp_asmk
-pip install cython
-cythonize cython/*.pyx
-pip install -e .
+git clone https://github.com/jenicek/asmk.git ../asmk_install || true
+cd ../asmk_install
+cd cython
+python -c "from Cython.Build import cythonize; import glob; cythonize(glob.glob('*.pyx'))"
 cd ..
-rm -rf temp_asmk
+pip install -e .
+cd ../mast3r
 
 # Create necessary directories
 mkdir -p checkpoints

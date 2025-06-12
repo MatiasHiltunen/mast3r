@@ -41,6 +41,18 @@ Made CUDA-specific calls conditional:
 - `mast3r/cloud_opt/sparse_ga.py` - Made `torch.cuda.empty_cache()` conditional
 - `mast3r/demo_glomap.py` - Made `torch.cuda.empty_cache()` conditional
 
+### Autocast Fix
+Fixed deprecated `torch.cuda.amp.autocast` syntax to `torch.amp.autocast('cuda', ...)` in:
+- `dust3r/dust3r/cloud_opt/base_opt.py` - Also made it device-aware
+- `dust3r/dust3r/inference.py`
+- `dust3r/dust3r/model.py`
+- `mast3r/cloud_opt/sparse_ga.py`
+
+### Retrieval Support
+- Added `faiss-cpu` to dependencies (CPU-only version for macOS)
+- Modified `mast3r/retrieval/processor.py` to handle CPU-only faiss and missing ASMK gracefully
+- ASMK must be installed separately as shown in README_MACOS.md
+
 ### Other Changes
 - Updated `.gitignore` to include uv-related files (`.venv/`, `uv.lock`)
 

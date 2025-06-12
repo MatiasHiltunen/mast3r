@@ -42,13 +42,13 @@ uv pip install cython numpy
 
 4. Install ASMK (required for retrieval features):
 ```bash
-git clone https://github.com/jenicek/asmk.git temp_asmk
-cd temp_asmk/cython
+# Clone to a permanent location outside the project
+git clone https://github.com/jenicek/asmk.git ../asmk_install
+cd ../asmk_install/cython
 python -c "from Cython.Build import cythonize; import glob; cythonize(glob.glob('*.pyx'))"
 cd ..
 uv pip install -e .
-cd ..
-rm -rf temp_asmk
+cd ../mast3r
 ```
 
 ## Download Model Checkpoints

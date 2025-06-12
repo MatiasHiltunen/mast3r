@@ -93,7 +93,7 @@ python demo.py \
 1. **No CUDA Support**: macOS doesn't support CUDA. The code has been modified to:
    - Use MPS (Metal Performance Shaders) when available for GPU acceleration on Apple Silicon
    - Fall back to CPU if MPS is not available
-   - Skip CUDA-specific optimizations like RoPE kernels
+   - Use Metal-accelerated RoPE2D implementation instead of CUDA kernels
 
 2. **Performance**: 
    - On Apple Silicon (M1/M2/M3), MPS provides GPU acceleration

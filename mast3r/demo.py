@@ -81,16 +81,25 @@ def _convert_scene_output_to_glb(outfile, imgs, pts3d, mask, focals, cams2world,
         pts = np.concatenate([p[m.ravel()] for p, m in zip(pts3d, mask)]).reshape(-1, 3)
         col = np.concatenate([p[m] for p, m in zip(imgs, mask)]).reshape(-1, 3)
         valid_msk = np.isfinite(pts.sum(axis=1))
-        pct = trimesh.PointCloud(pts[valid_msk], colors=col[valid_msk])
-        scene.add_geometry(pct)
+        if valid_msk.any():  # Check if there are any valid points
+            pct = trimesh.PointCloud(pts[valid_msk], colors=col[valid_msk])
+            scene.add_geometry(pct)
+        else:
+            if not silent:
+                print('Warning: No valid points found in the pointcloud!')
     else:
         meshes = []
         for i in range(len(imgs)):
             pts3d_i = pts3d[i].reshape(imgs[i].shape)
             msk_i = mask[i] & np.isfinite(pts3d_i.sum(axis=-1))
-            meshes.append(pts3d_to_trimesh(imgs[i], pts3d_i, msk_i))
-        mesh = trimesh.Trimesh(**cat_meshes(meshes))
-        scene.add_geometry(mesh)
+            if msk_i.any():  # Only create mesh if there are valid points
+                meshes.append(pts3d_to_trimesh(imgs[i], pts3d_i, msk_i))
+        if meshes:  # Only create combined mesh if there are any valid meshes
+            mesh = trimesh.Trimesh(**cat_meshes(meshes))
+            scene.add_geometry(mesh)
+        else:
+            if not silent:
+                print('Warning: No valid points found in any of the meshes!')
 
     # add each camera
     for i, pose_c2w in enumerate(cams2world):
@@ -107,8 +116,31 @@ def _convert_scene_output_to_glb(outfile, imgs, pts3d, mask, focals, cams2world,
     scene.apply_transform(np.linalg.inv(cams2world[0] @ OPENGL @ rot))
     if not silent:
         print('(exporting 3D scene to', outfile, ')')
-    scene.export(file_obj=outfile)
-    return outfile
+    
+    # Check if scene has any valid pointcloud/mesh geometry (excluding cameras)
+    has_valid_geometry = False
+    for geom_name, geom in scene.geometry.items():
+        if hasattr(geom, 'vertices') and len(geom.vertices) > 0:
+            has_valid_geometry = True
+            break
+    
+    if not has_valid_geometry:
+        if not silent:
+            print('Warning: Scene has no valid geometry to export (only cameras)!')
+        # Return None to indicate failure instead of creating an invalid file
+        return None
+    
+    # Try to export, catching any errors from trimesh with empty arrays
+    try:
+        scene.export(file_obj=outfile)
+        return outfile
+    except ValueError as e:
+        if 'zero-size array' in str(e):
+            if not silent:
+                print('Warning: Could not export scene - empty or invalid geometry')
+            return None
+        else:
+            raise  # Re-raise if it's a different ValueError
 
 
 def get_3D_model_from_scene(silent, scene_state, min_conf_thr=2, as_pointcloud=False, mask_sky=False,
@@ -135,8 +167,11 @@ def get_3D_model_from_scene(silent, scene_state, min_conf_thr=2, as_pointcloud=F
     else:
         pts3d, _, confs = to_numpy(scene.get_dense_pts3d(clean_depth=clean_depth))
     msk = to_numpy([c > min_conf_thr for c in confs])
-    return _convert_scene_output_to_glb(outfile, rgbimg, pts3d, msk, focals, cams2world, as_pointcloud=as_pointcloud,
+    result = _convert_scene_output_to_glb(outfile, rgbimg, pts3d, msk, focals, cams2world, as_pointcloud=as_pointcloud,
                                         transparent_cams=transparent_cams, cam_size=cam_size, silent=silent)
+    if result is None and not silent:
+        print("Warning: Could not generate 3D model - no valid points found. Try adjusting min_conf_thr or check your input images.")
+    return result
 
 
 def get_reconstructed_scene(outdir, gradio_delete_cache, model, retrieval_model, device, silent, image_size,

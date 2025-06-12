@@ -7,10 +7,23 @@
 import torch
 import numpy as np
 import math
+import platform
 from scipy.spatial import KDTree
 
 import mast3r.utils.path_to_dust3r  # noqa
 from dust3r.utils.device import to_numpy, todevice  # noqa
+
+# Try to use Metal acceleration on macOS
+_USE_METAL_ACCELERATION = False
+if platform.system() == 'Darwin':
+    try:
+        from mast3r.metal_nn.metal_nn import (
+            bruteforce_reciprocal_nns as _metal_bfr, 
+            MetalcdistMatcher as MetalMatcher
+        )
+        _USE_METAL_ACCELERATION = True
+    except ImportError:
+        pass  # Fall back to original implementation
 
 
 @torch.no_grad()
@@ -221,3 +234,45 @@ def extract_correspondences_nonsym(A, B, confA, confB, subsample=8, device=None,
     conf = np.minimum(c1[idx], c2[idx])
     corres = (xy1.copy(), xy2.copy(), conf)
     return todevice(corres, device)
+
+# -----------------------------------------------------------------------------
+# Helper wrappers (overwrite later functions if Metal is available)
+# -----------------------------------------------------------------------------
+
+def _cpu_bruteforce_reciprocal_nns(A, B, device='cpu', block_size=None, dist='l2'):
+    """Original CPU / CUDA implementation (defined later in this file)."""
+    # This will be monkey-patched after the original definition is parsed.
+    raise NotImplementedError
+
+
+def _cpu_cdistMatcher(db_pts, device='cpu'):
+    """Original CPU / CUDA matcher (defined later)."""
+    raise NotImplementedError
+
+# ----------------------
+# Metal override section
+# ----------------------
+if _USE_METAL_ACCELERATION:
+    # Backup the original CPU/CUDA implementations
+    _cpu_bruteforce_reciprocal_nns = bruteforce_reciprocal_nns  # type: ignore  # noqa: F401
+    _cpu_cdistMatcher = cdistMatcher  # type: ignore  # noqa: F401
+
+    def bruteforce_reciprocal_nns(A, B, device='auto', block_size=None, dist='l2'):
+        """Metal/MPS accelerated bruteforce reciprocal nearest neighbors.
+
+        Args:
+            A (Tensor|ndarray): Query descriptors
+            B (Tensor|ndarray): Database descriptors
+            device (str): 'auto' (default) chooses Metal if available, otherwise CPU/MPS.
+            block_size (int|None): Block size for memory efficiency
+            dist (str): 'l2' or 'dot'
+        """
+        # Force CPU/CUDA path if explicitly requested
+        if isinstance(device, str) and device.startswith('cuda'):
+            return _cpu_bruteforce_reciprocal_nns(A, B, device=device, block_size=block_size, dist=dist)
+        # Otherwise use Metal wrapper (which auto-selects best backend)
+        return _metal_bfr(A, B, device=device, block_size=block_size, dist=dist)
+
+    class cdistMatcher(MetalMatcher):  # type: ignore
+        """Metal-accelerated KD-tree like matcher (k=1). Falls back automatically."""
+        pass
